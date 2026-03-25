@@ -4,9 +4,11 @@ A simple machine learning web app that predicts house prices in Bangalore based 
 
 ## 🚀 Live Demo
 
-👉 https://your-username-bangalore-house-price-prediction.streamlit.app
+👉 https://banglorehousepriceprediction1.streamlit.app/
 
----
+## 📊 Dataset
+
+The dataset used in this project is based on **real Bangalore housing data from 2018**. While it reflects actual market trends, prices may differ from current market conditions.
 
 ## 📌 Features
 
