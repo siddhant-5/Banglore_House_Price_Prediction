@@ -1,35 +1,122 @@
 import streamlit as st
 import pickle
+import json
 import numpy as np
 
-# Load model
+# ---------------- PAGE CONFIG ---------------- #
+st.set_page_config(
+    page_title="Bangalore House Price Predictor",
+    page_icon="🏠",
+    layout="wide"
+)
+
+# ---------------- CUSTOM CSS ---------------- #
+st.markdown("""
+<style>
+.main {
+    background-color: #0e1117;
+}
+.title {
+    font-size: 40px;
+    font-weight: bold;
+    color: #00c6ff;
+}
+.subtitle {
+    font-size: 18px;
+    color: #9aa0a6;
+}
+.card {
+    padding: 25px;
+    border-radius: 15px;
+    background: #161b22;
+    box-shadow: 0px 4px 20px rgba(0,0,0,0.3);
+}
+.stButton>button {
+    background-color: #00c6ff;
+    color: black;
+    font-weight: bold;
+    border-radius: 10px;
+    height: 3em;
+    width: 100%;
+}
+</style>
+""", unsafe_allow_html=True)
+
+# ---------------- LOAD MODEL ---------------- #
 @st.cache_resource
-def load_model():
+def load_artifacts():
     with open("model/banglore_hpp_v2.pickle", "rb") as f:
-        return pickle.load(f)
+        model = pickle.load(f)
 
-model = load_model()
+    with open("model/columns.json", "r") as f:
+        data_columns = json.load(f)['data_columns']
 
-st.set_page_config(page_title="Bangalore House Price Predictor", layout="centered")
+    return model, data_columns
 
-st.title("🏠 Bangalore House Price Prediction")
-st.markdown("Enter property details to estimate price")
+model, data_columns = load_artifacts()
 
-# Inputs
-location = st.text_input("Location")
-sqft = st.number_input("Total Square Feet", min_value=300.0, max_value=10000.0)
-bath = st.number_input("Bathrooms", min_value=1, max_value=10)
-bhk = st.number_input("BHK", min_value=1, max_value=10)
-
-# Predict
-if st.button("Predict Price"):
+# ---------------- PREDICTION FUNCTION ---------------- #
+def predict_price(location, sqft, bath, bhk):
     try:
-        input_data = np.array([[location, sqft, bath, bhk]])
+        loc_index = data_columns.index(location.lower())
+    except:
+        loc_index = -1
 
-        # If your model expects encoded input, adjust here
-        prediction = model.predict(input_data)
+    x = np.zeros(len(data_columns))
+    x[0] = sqft
+    x[1] = bath
+    x[2] = bhk
 
-        st.success(f"💰 Estimated Price: ₹ {round(prediction[0], 2)} Lakhs")
+    if loc_index >= 0:
+        x[loc_index] = 1
 
-    except Exception as e:
-        st.error(f"Error: {e}")
+    return model.predict([x])[0]
+
+# ---------------- HEADER ---------------- #
+st.markdown('<div class="title">🏠 Bangalore House Price Predictor</div>', unsafe_allow_html=True)
+st.markdown('<div class="subtitle">Smart ML-powered real estate pricing</div>', unsafe_allow_html=True)
+
+st.write("")
+
+# ---------------- LAYOUT ---------------- #
+col1, col2 = st.columns([1, 1])
+
+# -------- LEFT: INPUT -------- #
+with col1:
+    st.markdown('<div class="card">', unsafe_allow_html=True)
+
+    st.markdown("### 📍 Property Details")
+
+    location = st.selectbox("Location", data_columns[3:])
+
+    sqft = st.number_input("Total Square Feet", 300.0, 10000.0, step=50.0)
+
+    bath = st.slider("Bathrooms", 1, 10, 2)
+
+    bhk = st.slider("BHK", 1, 10, 2)
+
+    predict_btn = st.button("Predict Price")
+
+    st.markdown('</div>', unsafe_allow_html=True)
+
+# -------- RIGHT: OUTPUT -------- #
+with col2:
+    st.markdown('<div class="card">', unsafe_allow_html=True)
+
+    st.markdown("### 💰 Prediction Result")
+
+    if predict_btn:
+        try:
+            price = predict_price(location, sqft, bath, bhk)
+
+            st.success(f"Estimated Price: ₹ {round(price, 2)} Lakhs")
+
+            st.metric("Price Range", f"₹ {round(price, 2)} L")
+
+        except Exception as e:
+            st.error(f"Error: {e}")
+    else:
+        st.info("Enter details and click Predict")
+
+    st.markdown('</div>', unsafe_allow_html=True)
+
